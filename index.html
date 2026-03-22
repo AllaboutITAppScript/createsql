@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>MySQL Designer Pro | เครื่องมือออกแบบฐานข้อมูล</title>
+    <!-- TailwindCSS + Font Awesome + Google Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body {
+            background: radial-gradient(circle at 10% 20%, #0a0f1e, #03060c);
+            min-height: 100vh;
+        }
+        /* ปรับแต่ง scrollbar สำหรับโหมดมืด */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.5);
+        }
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+        <!-- ส่วนหัวของแอปพลิเคชัน -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-3">
+                    <i class="fas fa-database text-blue-400"></i> 
+                    MySQL Designer Pro
+                </h1>
+                <p class="text-gray-400 mt-1 text-sm">ออกแบบฐานข้อมูลและตาราง → สร้างโค้ด SQL สำเร็จรูป พร้อมส่งออก</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="genSqlBtn" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all"><i class="fas fa-code"></i> แสดงโค้ด SQL</button>
+                <button id="exportSqlBtn" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all"><i class="fas fa-download"></i> ดาวน์โหลดไฟล์ .sql</button>
+            </div>
+        </div>
+
+        <!-- ส่วนหลัก: แบ่งเป็น 2 คอลัมน์ ซ้ายสำหรับออกแบบ, ขวาสำหรับแสดงผล SQL -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- ส่วนซ้าย: จัดการฐานข้อมูลและตาราง -->
+            <div class="bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-700/60 p-5 shadow-2xl">
+                <!-- ส่วนกำหนดชื่อฐานข้อมูล -->
+                <div class="mb-6 pb-4 border-b border-gray-700">
+                    <label class="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2"><i class="fas fa-server text-blue-400"></i> ชื่อฐานข้อมูล (Database)</label>
+                    <div class="flex gap-3">
+                        <input type="text" id="dbNameInput" placeholder="เช่น: my_ecommerce_db" value="app_designer_db" class="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white">
+                        <button id="applyDbBtn" class="bg-gray-700 hover:bg-gray-600 px-4 rounded-xl transition-colors"><i class="fas fa-check"></i> ตกลง</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">* ระบบจะสร้างคำสั่ง CREATE DATABASE IF NOT EXISTS อัตโนมัติ</p>
+                </div>
+
+                <!-- ส่วนจัดการตาราง -->
+                <div class="mb-4 flex justify-between items-center">
+                    <h2 class="text-xl font-semibold flex items-center gap-2"><i class="fas fa-table-list text-indigo-400"></i> รายการตารางทั้งหมด</h2>
+                    <button id="addTableBtn" class="bg-blue-600/80 hover:bg-blue-500 text-sm px-3 py-1.5 rounded-lg flex items-center gap-1 transition"><i class="fas fa-plus"></i> เพิ่มตาราง</button>
+                </div>
+                
+                <!-- คอนเทนเนอร์สำหรับแสดงตารางแบบไดนามิก -->
+                <div id="tablesContainer" class="space-y-5 max-h-[55vh] overflow-y-auto pr-1">
+                    <!-- ตารางต่างๆ จะถูกสร้างโดย JavaScript -->
+                </div>
+                <div class="mt-3 text-center text-xs text-gray-500">💡 คลิกไอคอนถังขยะเพื่อลบตาราง | ปุ่ม + เพื่อเพิ่มคอลัมน์</div>
+            </div>
+
+            <!-- ส่วนขวา: แสดงตัวอย่างโค้ด SQL และส่งออก -->
+            <div class="bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-700/60 p-5 shadow-2xl flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xl font-semibold flex items-center gap-2"><i class="fas fa-terminal text-green-400"></i> โค้ด MySQL ที่สร้างได้</h2>
+                    <button id="copyPreviewBtn" class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded-lg transition"><i class="far fa-copy"></i> คัดลอก</button>
+                </div>
+                <div class="bg-gray-950/90 rounded-xl border border-gray-700 p-4 h-[65vh] overflow-auto shadow-inner">
+                    <pre id="sqlPreview" class="code-block text-sm text-green-300 whitespace-pre-wrap break-all font-mono">-- คลิกปุ่ม "แสดงโค้ด SQL" เพื่อสร้างคำสั่ง MySQL</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- ส่วนท้าย (Footer) -->
+        <footer class="mt-10 text-center text-gray-500 border-t border-gray-800/60 pt-6 text-sm flex flex-wrap justify-between items-center">
+            <span>พัฒนาโดย <span class="text-blue-400 font-medium">ครบเครื่องเรื่องไอที</span> (เครื่องมือประกอบการสอน)</span>
+            <span class="text-xs"><i class="fas fa-laptop-code"></i> MySQL Designer v1.0 | รองรับโหมดมืด</span>
+        </footer>
+    </div>
+
+    <script>
+        // ==================== โครงสร้างข้อมูลหลัก ====================
+        // tables: จัดเก็บข้อมูลตารางทั้งหมด แต่ละตารางประกอบด้วย id, ชื่อตาราง, และคอลัมน์ต่างๆ
+        let tables = [];   
+        // currentDatabase: ชื่อฐานข้อมูลปัจจุบัน
+        let currentDatabase = "app_designer_db";
+        // ตัวแปรสำหรับสร้าง ID อัตโนมัติ
+        let nextTableId = 1;
+
+        // ฟังก์ชันสร้าง ID สำหรับตารางใหม่
+        function generateTableId() { 
+            return Date.now() + Math.random() * 10000 + nextTableId++; 
+        }
+
+        // ฟังก์ชันสร้างคอลัมน์เริ่มต้น (ใช้เมื่อเพิ่มตารางใหม่)
+        function createDefaultColumn() {
+            return {
+                name: "id",           // ชื่อคอลัมน์
+                type: "INT",          // ชนิดข้อมูล
+                length: "11",         // ความยาว
+                nullable: false,      // อนุญาตให้เป็นค่าว่างหรือไม่
+                primary: true,        // เป็นคีย์หลักหรือไม่
+                autoIncrement: true   // Auto increment หรือไม่
+            };
+        }
+
+        // ฟังก์ชันสร้างโครงสร้างตารางใหม่
+        function createNewTable() {
+            return {
+                id: generateTableId(),
+                name: "new_table",
+                columns: [createDefaultColumn()]
+            };
+        }
+
+        // เพิ่มตารางใหม่เข้าสู่ระบบ
+        function addTable() {
+            const newTable = createNewTable();
+            tables.push(newTable);
+            renderTablesUI();    // รีเฟรช UI
+            autoPreview();       // แสดงตัวอย่าง SQL อัตโนมัติ
+        }
+
+        // ลบตารางตาม ID
+        function deleteTable(tableId) {
+            if(confirm("คุณต้องการลบตารางนี้ใช่หรือไม่?")) {
+                tables = tables.filter(t => t.id != tableId);
+                renderTablesUI();
+                autoPreview();
+            }
+        }
+
+        // ปรับปรุงชื่อตาราง
+        function updateTableName(tableId, newName) {
+            const tbl = tables.find(t => t.id == tableId);
+            if(tbl) {
+                // ตรวจสอบและแปลงชื่อให้เหมาะสม (ไม่มีช่องว่าง)
+                tbl.name = newName.trim() === "" ? "unnamed" : newName.trim().replace(/\s+/g, '_');
+                renderTablesUI();
+                autoPreview();
+            }
+        }
+
+        // เพิ่มคอลัมน์ใหม่ให้กับตาราง
+        function addColumnToTable(tableId) {
+            const tbl = tables.find(t => t.id == tableId);
+            if(tbl) {
+                tbl.columns.push({
+                    name: "new_column",
+                    type: "VARCHAR",
+                    length: "255",
+                    nullable: true,
+                    primary: false,
+                    autoIncrement: false
+                });
+                renderTablesUI();
+                autoPreview();
+            }
+        }
+
+        // ลบคอลัมน์ออกจากตาราง (ต้องเหลืออย่างน้อย 1 คอลัมน์)
+        function deleteColumn(tableId, colIndex) {
+            const tbl = tables.find(t => t.id == tableId);
+            if(tbl && tbl.columns.length > 1) {
+                if(confirm("ลบคอลัมน์นี้ใช่หรือไม่?")) {
+                    tbl.columns.splice(colIndex, 1);
+                    renderTablesUI();
+                    autoPreview();
+                }
+            } else if(tbl && tbl.columns.length === 1) {
+                alert("ไม่สามารถลบได้: ตารางต้องมีอย่างน้อย 1 คอลัมน์");
+            }
+        }
+
+        // ปรับปรุงข้อมูลของคอลัมน์ (ชื่อ, ชนิดข้อมูล, ความยาว, nullable, primary key, auto increment)
+        function updateColumnField(tableId, colIndex, field, value) {
+            const tbl = tables.find(t => t.id == tableId);
+            if(tbl && tbl.columns[colIndex]) {
+                const col = tbl.columns[colIndex];
+                
+                if(field === "name") {
+                    let newName = value.trim();
+                    if(newName === "") newName = "col";
+                    col.name = newName.replace(/\s+/g, '_');
+                }
+                else if(field === "type") {
+                    col.type = value;
+                    // ปรับค่า auto increment ให้เหมาะสมกับชนิดข้อมูล
+                    if(col.autoIncrement && col.type !== "INT" && col.type !== "BIGINT") {
+                        col.autoIncrement = false;
+                    }
+                }
+                else if(field === "length") {
+                    col.length = value;
+                }
+                else if(field === "nullable") {
+                    col.nullable = value === "true" || value === true;
+                }
+                else if(field === "primary") {
+                    const isPrimary = (value === "true" || value === true);
+                    if(isPrimary) {
+                        // ตรวจสอบว่าในตารางเดียวกันมี primary key อื่นอยู่หรือไม่ ถ้ามีให้ลบออก
+                        tbl.columns.forEach((c, idx) => {
+                            if(idx !== colIndex) c.primary = false;
+                        });
+                        col.primary = true;
+                        // ถ้าเปิด primary key และชนิดข้อมูลเป็น INT/BIGINT และ auto increment ยังไม่เปิด ให้เปิดอัตโนมัติเพื่อความสะดวก
+                        if((col.type === "INT" || col.type === "BIGINT") && !col.autoIncrement) {
+                            col.autoIncrement = true;
+                        }
+                    } else {
+                        col.primary = false;
+                        // ถ้ายกเลิก primary key ให้ปิด auto increment ด้วย
+                        if(col.autoIncrement) {
+                            col.autoIncrement = false;
+                        }
+                    }
+                }
+                else if(field === "autoIncrement") {
+                    const isAutoInc = (value === "true" || value === true);
+                    if(isAutoInc) {
+                        // ตรวจสอบเงื่อนไข: ต้องเป็น primary key และชนิดข้อมูลต้องเป็น INT หรือ BIGINT
+                        if(!col.primary) {
+                            alert("Auto Increment ต้องใช้ร่วมกับ Primary Key เท่านั้น กรุณาเปิด Primary Key ก่อน");
+                            return;
+                        }
+                        if(col.type !== "INT" && col.type !== "BIGINT") {
+                            alert("Auto Increment เหมาะกับชนิดข้อมูล INT หรือ BIGINT เท่านั้น");
+                            return;
+                        }
+                        col.autoIncrement = true;
+                    } else {
+                        col.autoIncrement = false;
+                    }
+                }
+                
+                renderTablesUI();
+                autoPreview();
+            }
+        }
+
+        // ฟังก์ชันสร้างโค้ด SQL อย่างสมบูรณ์ (CREATE DATABASE + CREATE TABLE)
+        function generateMySQLScript() {
+            if(!currentDatabase || currentDatabase.trim() === "") currentDatabase = "mydb";
+            
+            let sql = `-- ===========================================\n`;
+            sql += `-- สร้างโดย MySQL Designer Pro\n`;
+            sql += `-- ฐานข้อมูล: ${currentDatabase}\n`;
+            sql += `-- วันที่สร้าง: ${new Date().toLocaleString('th-TH')}\n`;
+            sql += `-- ===========================================\n\n`;
+            sql += `CREATE DATABASE IF NOT EXISTS \`${escapeSqlIdentifier(currentDatabase)}\`;\n`;
+            sql += `USE \`${escapeSqlIdentifier(currentDatabase)}\`;\n\n`;
+
+            if(tables.length === 0) {
+                sql += `-- ยังไม่มีตารางในระบบ กรุณาเพิ่มตารางก่อน\n`;
+                return sql;
+            }
+
+            // สร้างคำสั่ง CREATE TABLE สำหรับแต่ละตาราง
+            tables.forEach(table => {
+                if(!table.name || table.name.trim() === "") table.name = "undefined_table";
+                const tableName = escapeSqlIdentifier(table.name);
+                sql += `-- ตาราง: ${table.name}\n`;
+                sql += `CREATE TABLE IF NOT EXISTS ${tableName} (\n`;
+                
+                const colDefs = [];
+                // สร้างคำจำกัดความของแต่ละคอลัมน์
+                table.columns.forEach((col) => {
+                    let colName = escapeSqlIdentifier(col.name);
+                    let dataType = col.type.toUpperCase();
+                    
+                    // จัดการความยาวของชนิดข้อมูล
+                    let typeDef = dataType;
+                    if(col.length && col.length.trim() !== "") {
+                        if(dataType === "DECIMAL") {
+                            typeDef = `${dataType}(${col.length})`;
+                        } else if(dataType === "VARCHAR" || dataType === "CHAR" || dataType === "INT" || dataType === "BIGINT") {
+                            typeDef = `${dataType}(${col.length})`;
+                        } else {
+                            typeDef = dataType;
+                        }
+                    } else {
+                        // กำหนดค่าเริ่มต้นหากไม่ระบุความยาว
+                        if(dataType === "VARCHAR") typeDef = `VARCHAR(255)`;
+                        else if(dataType === "INT") typeDef = `INT(11)`;
+                        else typeDef = dataType;
+                    }
+                    
+                    let line = `    ${colName} ${typeDef}`;
+                    
+                    // จัดการ NOT NULL / NULL
+                    if(!col.nullable) line += ` NOT NULL`;
+                    else line += ` NULL`;
+                    
+                    // จัดการ AUTO_INCREMENT (ต้องเป็น Primary Key เท่านั้น)
+                    if(col.autoIncrement && col.primary) {
+                        line += ` AUTO_INCREMENT`;
+                    }
+                    
+                    // จัดการ PRIMARY KEY
+                    if(col.primary) {
+                        line += ` PRIMARY KEY`;
+                    }
+                    
+                    colDefs.push(line);
+                });
+                
+                sql += colDefs.join(",\n");
+                sql += `\n);\n\n`;
+            });
+            
+            return sql;
+        }
+
+        // ฟังก์ชันป้องกัน SQL Injection ในการ Escape ชื่อ (identifier)
+        function escapeSqlIdentifier(str) {
+            if(!str) return "``";
+            return "`" + str.replace(/`/g, '``') + "`";
+        }
+
+        // แสดงตัวอย่าง SQL อัตโนมัติ
+        function autoPreview() {
+            const sqlScript = generateMySQLScript();
+            document.getElementById("sqlPreview").innerText = sqlScript;
+        }
+
+        // แสดงผล UI ของตารางทั้งหมดแบบไดนามิก
+        function renderTablesUI() {
+            const container = document.getElementById("tablesContainer");
+            if(!container) return;
+            
+            if(tables.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-gray-500 bg-gray-800/30 rounded-xl"><i class="fas fa-table text-3xl mb-2 opacity-40"></i><p>ยังไม่มีตาราง กดปุ่ม "+ เพิ่มตาราง" เพื่อเริ่มออกแบบ</p></div>`;
+                return;
+            }
+            
+            let html = '';
+            tables.forEach((table) => {
+                const tableId = table.id;
+                const tableName = table.name;
+                
+                html += `
+                <div class="bg-gray-800/60 rounded-xl border border-gray-700 p-3 card-hover transition-all" data-table-id="${tableId}">
+                    <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                        <div class="flex items-center gap-2 flex-1">
+                            <i class="fas fa-table text-indigo-300"></i>
+                            <input type="text" value="${escapeHtml(tableName)}" placeholder="ชื่อตาราง" 
+                                class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white font-medium w-48 focus:ring-1 focus:ring-blue-500"
+                                onchange="updateTableName(${tableId}, this.value)">
+                        </div>
+                        <button onclick="deleteTable(${tableId})" class="text-red-400 hover:text-red-300 bg-gray-700/60 p-1.5 rounded-lg"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-750 text-gray-300 text-xs">
+                                <tr>
+                                    <th class="px-2 py-1.5 text-left">ชื่อคอลัมน์</th>
+                                    <th class="px-2 py-1.5">ชนิดข้อมูล</th>
+                                    <th class="px-2 py-1.5">ความยาว</th>
+                                    <th class="px-2 py-1.5">Null ได้</th>
+                                    <th class="px-2 py-1.5">PK</th>
+                                    <th class="px-2 py-1.5">AI</th>
+                                    <th class="px-2 py-1.5 w-8"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                table.columns.forEach((col, cIdx) => {
+                    const colNameVal = col.name;
+                    const typeVal = col.type;
+                    const lengthVal = col.length || '';
+                    const nullableChecked = col.nullable ? true : false;
+                    const primaryChecked = col.primary ? true : false;
+                    const autoIncChecked = col.autoIncrement ? true : false;
+                    
+                    html += `
+                        <tr class="border-b border-gray-700/60">
+                            <td class="px-2 py-2"><input type="text" value="${escapeHtml(colNameVal)}" 
+                                class="bg-gray-800 border border-gray-600 rounded-md px-2 py-1 w-28 text-white text-xs"
+                                onchange="updateColumnField(${tableId}, ${cIdx}, 'name', this.value)"></td>
+                            <td class="px-2 py-2">
+                                <select onchange="updateColumnField(${tableId}, ${cIdx}, 'type', this.value)" class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 text-xs w-24">
+                                    ${generateTypeOptions(typeVal)}
+                                </select>
+                            </td>
+                            <td class="px-2 py-2"><input type="text" value="${escapeHtml(lengthVal)}" 
+                                class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 w-16 text-xs text-center"
+                                onchange="updateColumnField(${tableId}, ${cIdx}, 'length', this.value)"></td>
+                            <td class="px-2 py-2 text-center">
+                                <input type="checkbox" ${nullableChecked ? 'checked' : ''} 
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'nullable', this.checked)" class="w-4 h-4 accent-blue-500">
+                            </td>
+                            <td class="px-2 py-2 text-center">
+                                <input type="radio" name="pk_radio_${tableId}" ${primaryChecked ? 'checked' : ''} 
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'primary', true)" class="w-4 h-4 accent-green-500">
+                            </td>
+                            <td class="px-2 py-2 text-center">
+                                <input type="checkbox" ${autoIncChecked ? 'checked' : ''} 
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'autoIncrement', this.checked)" class="w-4 h-4 accent-yellow-500">
+                            </td>
+                            <td class="px-2 py-2 text-center">
+                                <button onclick="deleteColumn(${tableId}, ${cIdx})" class="text-red-400 hover:text-red-300 text-xs"><i class="fas fa-minus-circle"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 flex justify-end">
+                        <button onclick="addColumnToTable(${tableId})" class="text-xs bg-indigo-600/40 hover:bg-indigo-600 px-3 py-1.5 rounded-lg flex items-center gap-1 transition"><i class="fas fa-plus-circle"></i> เพิ่มคอลัมน์</button>
+                    </div>
+                </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // สร้างตัวเลือกชนิดข้อมูลสำหรับ dropdown
+        function generateTypeOptions(selected) {
+            const types = ["INT", "VARCHAR", "TEXT", "DATE", "DATETIME", "DECIMAL", "BOOLEAN", "BIGINT", "CHAR", "TIMESTAMP"];
+            let opts = "";
+            types.forEach(t => {
+                opts += `<option value="${t}" ${selected === t ? 'selected' : ''}>${t}</option>`;
+            });
+            return opts;
+        }
+
+        // ป้องกัน XSS ด้วยการ Escape HTML
+        function escapeHtml(str) {
+            if(!str) return "";
+            return str.replace(/[&<>]/g, function(m) {
+                if(m === '&') return '&amp;';
+                if(m === '<') return '&lt;';
+                if(m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // บันทึกชื่อฐานข้อมูล
+        function applyDatabaseName() {
+            const inputDb = document.getElementById("dbNameInput").value;
+            if(inputDb.trim() !== "") {
+                currentDatabase = inputDb.trim().replace(/\s/g, '_');
+                document.getElementById("dbNameInput").value = currentDatabase;
+                autoPreview();
+            } else {
+                alert("กรุณากรอกชื่อฐานข้อมูล");
+            }
+        }
+
+        // ส่งออกไฟล์ SQL
+        function exportSQLFile() {
+            const sqlContent = generateMySQLScript();
+            if(sqlContent.includes("ยังไม่มีตาราง") && tables.length === 0) {
+                alert("ยังไม่มีตารางในระบบ กรุณาสร้างตารางก่อนส่งออกไฟล์ SQL");
+                return;
+            }
+            const blob = new Blob([sqlContent], {type: "text/plain;charset=utf-8"});
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `${currentDatabase}_schema.sql`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            alert("ส่งออกไฟล์ SQL สำเร็จ!");
+        }
+
+        // คัดลอกโค้ด SQL ไปยังคลิปบอร์ด
+        function copyPreviewToClipboard() {
+            const previewText = document.getElementById("sqlPreview").innerText;
+            if(!previewText || previewText.includes("คลิกปุ่ม")) {
+                alert("ไม่มีโค้ด SQL ให้คัดลอก กรุณาคลิกปุ่ม 'แสดงโค้ด SQL' ก่อน");
+                return;
+            }
+            navigator.clipboard.writeText(previewText).then(() => {
+                alert("คัดลอกโค้ด SQL ไปยังคลิปบอร์ดเรียบร้อย!");
+            }).catch(() => alert("ไม่สามารถคัดลอกได้"));
+        }
+
+        // ผูกเหตุการณ์ต่างๆ (Event Listeners)
+        function bindGlobalEvents() {
+            document.getElementById("genSqlBtn")?.addEventListener("click", () => autoPreview());
+            document.getElementById("exportSqlBtn")?.addEventListener("click", () => exportSQLFile());
+            document.getElementById("applyDbBtn")?.addEventListener("click", () => applyDatabaseName());
+            document.getElementById("addTableBtn")?.addEventListener("click", () => addTable());
+            document.getElementById("copyPreviewBtn")?.addEventListener("click", () => copyPreviewToClipboard());
+            
+            // กด Enter ในช่องชื่อฐานข้อมูล
+            const dbInput = document.getElementById("dbNameInput");
+            if(dbInput) dbInput.addEventListener("keypress", (e) => { if(e.key === "Enter") applyDatabaseName(); });
+        }
+
+        // กำหนดฟังก์ชันให้อยู่ใน scope ระดับ global เพื่อให้ HTML onclick เรียกใช้ได้
+        window.updateTableName = updateTableName;
+        window.deleteTable = deleteTable;
+        window.addColumnToTable = addColumnToTable;
+        window.deleteColumn = deleteColumn;
+        window.updateColumnField = updateColumnField;
+        
+        // เริ่มต้นระบบด้วยข้อมูลตัวอย่าง
+        function initDemoData() {
+            // สร้างตารางตัวอย่าง: สินค้า (products) และ หมวดหมู่ (categories)
+            const tableProducts = {
+                id: generateTableId(),
+                name: "products",
+                columns: [
+                    { name: "id", type: "INT", length: "11", nullable: false, primary: true, autoIncrement: true },
+                    { name: "name", type: "VARCHAR", length: "150", nullable: false, primary: false, autoIncrement: false },
+                    { name: "price", type: "DECIMAL", length: "10,2", nullable: true, primary: false, autoIncrement: false },
+                    { name: "created_at", type: "DATETIME", length: "", nullable: true, primary: false, autoIncrement: false }
+                ]
+            };
+            
+            const tableCategories = {
+                id: generateTableId(),
+                name: "categories",
+                columns: [
+                    { name: "cat_id", type: "INT", length: "11", nullable: false, primary: true, autoIncrement: true },
+                    { name: "title", type: "VARCHAR", length: "100", nullable: false, primary: false, autoIncrement: false },
+                    { name: "description", type: "TEXT", length: "", nullable: true, primary: false, autoIncrement: false }
+                ]
+            };
+            
+            tables = [tableProducts, tableCategories];
+            currentDatabase = "ecommerce_demo";
+            document.getElementById("dbNameInput").value = currentDatabase;
+            renderTablesUI();
+            autoPreview();
+        }
+        
+        // เริ่มต้นการทำงาน
+        initDemoData();
+        bindGlobalEvents();
+    </script>
+</body>
+</html>
