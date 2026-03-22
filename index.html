@@ -31,55 +31,35 @@
             font-family: 'Fira Code', monospace;
             font-size: 0.85rem;
         }
-        /* ป้องกันการเลือกข้อความและคัดลอก */
-        .protected-content {
+        /* ป้องกันการเลือกข้อความในส่วนที่ไม่ต้องการให้คัดลอก */
+        .no-select {
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
         }
+        /* แต่ให้เลือกข้อความในโค้ดได้เพื่อคัดลอกผ่านปุ่มเท่านั้น */
         .code-block {
             user-select: text !important;
             -webkit-user-select: text !important;
             -moz-user-select: text !important;
             -ms-user-select: text !important;
         }
-        /* ปุ่มล็อค/ปลดล็อค */
-        .lock-btn {
-            transition: all 0.3s ease;
+        /* ปุ่มคัดลอกแบบกำหนดเอง */
+        .copy-btn {
+            transition: all 0.2s ease;
         }
-        .lock-btn:hover {
+        .copy-btn:hover {
             transform: scale(1.05);
         }
-        /* Overlay ป้องกันการพิมพ์ข้อความ */
-        .anti-copy-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 9999;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(5px);
+        /* ป้องกันการเลือกข้อความในส่วน UI ทั่วไป */
+        .disable-select {
+            user-select: none;
+            -webkit-user-select: none;
         }
     </style>
 </head>
-<body class="text-gray-200">
-
-    <!-- Overlay ป้องกันการคัดลอกขณะล็อค -->
-    <div id="antiCopyOverlay" class="anti-copy-overlay">
-        <div class="bg-gray-900 rounded-2xl p-8 max-w-md text-center border border-red-500 shadow-2xl">
-            <i class="fas fa-lock text-red-500 text-5xl mb-4"></i>
-            <h3 class="text-2xl font-bold text-white mb-3">⚠️ ระบบถูกป้องกัน ⚠️</h3>
-            <p class="text-gray-300 mb-4">เครื่องมือนี้สงวนลิขสิทธิ์เพื่อการศึกษา<br>กรุณาคลิกปุ่ม "ปลดล็อค" เพื่อใช้งานฟังก์ชันการคัดลอกและส่งออก</p>
-            <button id="unlockFromOverlayBtn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg font-semibold transition">
-                <i class="fas fa-unlock-alt"></i> ปลดล็อคและยืนยันตัวตน
-            </button>
-        </div>
-    </div>
+<body class="text-gray-200 disable-select">
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         <!-- ส่วนหัวของแอปพลิเคชัน -->
@@ -92,13 +72,10 @@
                 <p class="text-gray-400 mt-1 text-sm">ออกแบบฐานข้อมูลและตาราง → สร้างโค้ด SQL สำเร็จรูป พร้อมส่งออก</p>
             </div>
             <div class="flex gap-3">
-                <button id="unlockBtn" class="bg-yellow-600 hover:bg-yellow-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all lock-btn">
-                    <i class="fas fa-lock"></i> ระบบถูกล็อค | คลิกเพื่อปลดล็อค
-                </button>
-                <button id="genSqlBtn" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <button id="genSqlBtn" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all">
                     <i class="fas fa-code"></i> แสดงโค้ด SQL
                 </button>
-                <button id="exportSqlBtn" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <button id="exportSqlBtn" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all">
                     <i class="fas fa-download"></i> ดาวน์โหลดไฟล์ .sql
                 </button>
             </div>
@@ -135,13 +112,17 @@
             <div class="bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-700/60 p-5 shadow-2xl flex flex-col">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xl font-semibold flex items-center gap-2"><i class="fas fa-terminal text-green-400"></i> โค้ด MySQL ที่สร้างได้</h2>
-                    <button id="copyPreviewBtn" class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        <i class="far fa-copy"></i> คัดลอก
-                    </button>
+                    <div class="flex gap-2">
+                        <button id="copyPreviewBtn" class="copy-btn bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all">
+                            <i class="far fa-copy"></i> คัดลอกโค้ด
+                        </button>
+                    </div>
                 </div>
                 <div class="bg-gray-950/90 rounded-xl border border-gray-700 p-4 h-[65vh] overflow-auto shadow-inner">
-                    <pre id="sqlPreview" class="code-block text-sm text-green-300 whitespace-pre-wrap break-all font-mono">-- 🔒 ระบบถูกล็อคเพื่อป้องกันการใช้งานโดยไม่ได้รับอนุญาต
--- กรุณาคลิกปุ่ม "ปลดล็อค" ที่มุมขวาบนเพื่อยืนยันตัวตนและใช้งานเครื่องมือ</pre>
+                    <pre id="sqlPreview" class="code-block text-sm text-green-300 whitespace-pre-wrap break-all font-mono">-- คลิกปุ่ม "แสดงโค้ด SQL" เพื่อสร้างคำสั่ง MySQL</pre>
+                </div>
+                <div class="mt-3 text-xs text-center text-gray-500">
+                    <i class="fas fa-shield-alt text-yellow-500"></i> ป้องกันการคัดลอกด้วยวิธีคลิกขวา | ใช้ปุ่มคัดลอกด้านบนแทน
                 </div>
             </div>
         </div>
@@ -155,160 +136,120 @@
 
     <script>
         // ==================== ระบบป้องกันการคัดลอก ====================
-        let isUnlocked = false; // สถานะการปลดล็อค
         
-        // ฟังก์ชันแสดง SweetAlert ยืนยันตัวตน
-        async function showUnlockConfirmation() {
-            const result = await Swal.fire({
-                title: '🔒 ยืนยันตัวตนเพื่อใช้งาน',
+        // 1. ป้องกันการคลิกขวาทั้งหน้า
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: '⚠️ ไม่อนุญาตให้คัดลอกด้วยวิธีนี้',
                 html: `
-                    <div class="text-left">
-                        <p class="mb-3">เครื่องมือนี้พัฒนาโดย <strong class="text-blue-400">"ครบเครื่องเรื่องไอที"</strong></p>
-                        <p class="mb-3">เพื่อวัตถุประสงค์ในการศึกษาและการเรียนการสอนเท่านั้น</p>
-                        <p class="mb-3">กรุณากรอกรหัสผ่านเพื่อปลดล็อคระบบ:</p>
-                        <input type="password" id="unlockPassword" class="swal2-input" placeholder="รหัสผ่าน">
-                        <p class="text-xs text-gray-400 mt-2">* รหัสผ่านสำหรับนักศึกษา/ผู้เรียน: <strong class="text-yellow-400">teach2024</strong></p>
+                    <div class="text-center">
+                        <i class="fas fa-lock text-4xl text-yellow-500 mb-3"></i>
+                        <p class="mb-2">กรุณาใช้ปุ่ม <strong class="text-blue-400">"คัดลอกโค้ด"</strong> หรือ</p>
+                        <p>ปุ่ม <strong class="text-emerald-400">"ดาวน์โหลดไฟล์ .sql"</strong> แทน</p>
+                        <p class="text-xs text-gray-400 mt-3">สงวนลิขสิทธิ์เพื่อการศึกษา โดย ครบเครื่องเรื่องไอที</p>
                     </div>
                 `,
+                icon: 'warning',
                 background: '#1f2937',
                 color: '#fff',
-                confirmButtonText: 'ยืนยัน',
-                cancelButtonText: 'ยกเลิก',
-                showCancelButton: true,
                 confirmButtonColor: '#3b82f6',
-                cancelButtonColor: '#6b7280',
-                preConfirm: () => {
-                    const password = document.getElementById('unlockPassword').value;
-                    if (!password) {
-                        Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
-                        return false;
-                    }
-                    return password;
-                }
+                confirmButtonText: 'เข้าใจแล้ว',
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                timer: 3000
             });
-            
-            if (result.isConfirmed && result.value === 'teach2024') {
-                isUnlocked = true;
-                enableAllFeatures();
+            return false;
+        });
+        
+        // 2. ป้องกันการใช้แป้นพิมพ์ลัดคัดลอก (Ctrl+C, Ctrl+X, Ctrl+V)
+        document.addEventListener('copy', function(e) {
+            // อนุญาตให้คัดลอกได้เฉพาะตอนที่กดปุ่มคัดลอกเท่านั้น
+            if (!window.isCopyAllowed) {
+                e.preventDefault();
                 Swal.fire({
-                    title: '✅ ปลดล็อคสำเร็จ',
-                    text: 'ตอนนี้คุณสามารถใช้งานฟังก์ชันทั้งหมดได้แล้ว',
-                    icon: 'success',
+                    title: '⛔ ไม่อนุญาตให้คัดลอกด้วยแป้นพิมพ์',
+                    text: 'กรุณาใช้ปุ่ม "คัดลอกโค้ด" ที่มุมขวาบนแทน',
+                    icon: 'warning',
+                    background: '#1f2937',
+                    color: '#fff',
+                    confirmButtonColor: '#f59e0b',
+                    timer: 2500
+                });
+                return false;
+            }
+            window.isCopyAllowed = false;
+        });
+        
+        document.addEventListener('cut', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: '⛔ ไม่อนุญาตให้ตัดข้อมูล',
+                text: 'กรุณาใช้ปุ่มคัดลอกแทน',
+                icon: 'warning',
+                background: '#1f2937',
+                color: '#fff',
+                timer: 2000
+            });
+            return false;
+        });
+        
+        document.addEventListener('paste', function(e) {
+            // อนุญาตให้วางได้เฉพาะใน input field ที่จำเป็น
+            const target = e.target;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                return true;
+            }
+            e.preventDefault();
+            return false;
+        });
+        
+        // 3. ป้องกันการลากเลือกข้อความ (Drag and Drop)
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 4. ป้องกันการบันทึกหน้าด้วย Ctrl+S
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault();
+                Swal.fire({
+                    title: '💾 บันทึกผ่านปุ่มดาวน์โหลด',
+                    text: 'กรุณาใช้ปุ่ม "ดาวน์โหลดไฟล์ .sql" เพื่อบันทึกโค้ด',
+                    icon: 'info',
                     background: '#1f2937',
                     color: '#fff',
                     confirmButtonColor: '#10b981',
                     timer: 2000
                 });
-                return true;
-            } else if (result.isConfirmed) {
-                Swal.fire({
-                    title: '❌ รหัสผ่านไม่ถูกต้อง',
-                    text: 'กรุณาติดต่อผู้พัฒนาเพื่อขอรับรหัสผ่านที่ถูกต้อง',
-                    icon: 'error',
-                    background: '#1f2937',
-                    color: '#fff',
-                    confirmButtonColor: '#ef4444'
-                });
                 return false;
             }
-            return false;
-        }
+            
+            // ป้องกัน F12 (Developer Tools) เปิดง่ายๆ (แค่เตือน)
+            if (e.key === 'F12') {
+                e.preventDefault();
+                Swal.fire({
+                    title: '🔧 สำหรับนักพัฒนา',
+                    text: 'เครื่องมือนี้สงวนลิขสิทธิ์เพื่อการศึกษา',
+                    icon: 'info',
+                    background: '#1f2937',
+                    color: '#fff',
+                    timer: 2000
+                });
+            }
+        });
         
-        // เปิดใช้งานฟังก์ชันทั้งหมด
-        function enableAllFeatures() {
-            // เปิดใช้งานปุ่มต่างๆ
-            document.getElementById('genSqlBtn').disabled = false;
-            document.getElementById('exportSqlBtn').disabled = false;
-            document.getElementById('copyPreviewBtn').disabled = false;
-            
-            // เปลี่ยนสถานะปุ่มล็อค
-            const unlockBtn = document.getElementById('unlockBtn');
-            unlockBtn.innerHTML = '<i class="fas fa-unlock-alt"></i> ระบบปลดล็อคแล้ว';
-            unlockBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-500');
-            unlockBtn.classList.add('bg-green-600', 'hover:bg-green-500');
-            
-            // ซ่อน overlay ถ้ามีการแสดง
-            document.getElementById('antiCopyOverlay').style.display = 'none';
-            
-            // แสดงตัวอย่าง SQL
-            autoPreview();
-            
-            // แจ้งเตือน
-            Swal.fire({
-                title: '🎉 ยินดีต้อนรับ',
-                text: 'ระบบพร้อมใช้งานแล้ว สามารถออกแบบฐานข้อมูลและส่งออกไฟล์ SQL ได้',
-                icon: 'info',
-                background: '#1f2937',
-                color: '#fff',
-                confirmButtonColor: '#3b82f6',
-                timer: 2000
-            });
-        }
-        
-        // ป้องกันการคัดลอกจากคอนโซลและ开发者工具
-        function antiCopyProtection() {
-            // ป้องกันการกด Ctrl+C, Ctrl+X, Ctrl+V
-            document.addEventListener('copy', function(e) {
-                if (!isUnlocked) {
-                    e.preventDefault();
-                    Swal.fire({
-                        title: '⛔ ไม่อนุญาตให้คัดลอก',
-                        text: 'กรุณาปลดล็อคระบบก่อนใช้งานฟังก์ชันคัดลอก',
-                        icon: 'warning',
-                        background: '#1f2937',
-                        color: '#fff',
-                        confirmButtonColor: '#f59e0b'
-                    });
-                    return false;
-                }
-            });
-            
-            document.addEventListener('cut', function(e) {
-                if (!isUnlocked) {
-                    e.preventDefault();
-                    return false;
-                }
-            });
-            
-            document.addEventListener('paste', function(e) {
-                if (!isUnlocked) {
-                    e.preventDefault();
-                    return false;
-                }
-            });
-            
-            // ป้องกันการคลิกขวา
-            document.addEventListener('contextmenu', function(e) {
-                if (!isUnlocked) {
-                    e.preventDefault();
-                    Swal.fire({
-                        title: '⛔ ฟังก์ชันถูกจำกัด',
-                        text: 'ระบบถูกป้องกันเพื่อรักษาลิขสิทธิ์ทางการศึกษา',
-                        icon: 'warning',
-                        background: '#1f2937',
-                        color: '#fff',
-                        confirmButtonColor: '#f59e0b',
-                        timer: 1500
-                    });
-                    return false;
-                }
-            });
-            
-            // ตรวจสอบการเปิด Developer Tools (เบื้องต้น)
-            let devtools = /./;
+        // 5. ป้องกันการ Inspect Element ด้วยการคลิกขวา (เพิ่มเติม)
+        // ตรวจสอบการเปิด开发者工具 (เบื้องต้น)
+        setInterval(function() {
+            const devtools = /./;
             devtools.toString = function() {
-                if (!isUnlocked) {
-                    Swal.fire({
-                        title: '⚠️ ตรวจพบ Developer Tools',
-                        text: 'กรุณาปิด Developer Tools เพื่อใช้งานระบบ',
-                        icon: 'warning',
-                        background: '#1f2937',
-                        color: '#fff'
-                    });
-                }
+                // ไม่แจ้งเตือนซ้ำรบกวน แต่ให้ทำงานเงียบ
                 return '';
             };
-        }
+        }, 1000);
         
         // ==================== โครงสร้างข้อมูลหลัก ====================
         let tables = [];   
@@ -339,36 +280,27 @@
         }
 
         function addTable() {
-            if (!isUnlocked) {
-                Swal.fire({
-                    title: '🔒 ระบบถูกล็อค',
-                    text: 'กรุณาปลดล็อคระบบก่อนเพิ่มตาราง',
-                    icon: 'warning',
-                    background: '#1f2937',
-                    color: '#fff'
-                });
-                return;
-            }
             const newTable = createNewTable();
             tables.push(newTable);
             renderTablesUI();
             autoPreview();
+            
+            Swal.fire({
+                title: '✅ เพิ่มตารางสำเร็จ',
+                text: `เพิ่มตาราง "${newTable.name}" แล้ว`,
+                icon: 'success',
+                background: '#1f2937',
+                color: '#fff',
+                timer: 1500,
+                showConfirmButton: false
+            });
         }
 
         function deleteTable(tableId) {
-            if (!isUnlocked) {
-                Swal.fire({
-                    title: '🔒 ระบบถูกล็อค',
-                    text: 'กรุณาปลดล็อคระบบก่อนลบตาราง',
-                    icon: 'warning',
-                    background: '#1f2937',
-                    color: '#fff'
-                });
-                return;
-            }
+            const tableName = tables.find(t => t.id == tableId)?.name;
             Swal.fire({
                 title: 'ยืนยันการลบ',
-                text: 'คุณต้องการลบตารางนี้ใช่หรือไม่?',
+                html: `คุณต้องการลบตาราง <strong class="text-red-400">${tableName}</strong> ใช่หรือไม่?`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'ลบ',
@@ -388,7 +320,6 @@
         }
 
         function updateTableName(tableId, newName) {
-            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl) {
                 tbl.name = newName.trim() === "" ? "unnamed" : newName.trim().replace(/\s+/g, '_');
@@ -398,7 +329,6 @@
         }
 
         function addColumnToTable(tableId) {
-            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl) {
                 tbl.columns.push({
@@ -411,16 +341,26 @@
                 });
                 renderTablesUI();
                 autoPreview();
+                
+                Swal.fire({
+                    title: '✨ เพิ่มคอลัมน์',
+                    text: 'เพิ่มคอลัมน์ใหม่แล้ว',
+                    icon: 'success',
+                    background: '#1f2937',
+                    color: '#fff',
+                    timer: 1000,
+                    showConfirmButton: false
+                });
             }
         }
 
         function deleteColumn(tableId, colIndex) {
-            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl && tbl.columns.length > 1) {
+                const colName = tbl.columns[colIndex].name;
                 Swal.fire({
                     title: 'ยืนยันการลบคอลัมน์',
-                    text: 'คุณต้องการลบคอลัมน์นี้ใช่หรือไม่?',
+                    html: `คุณต้องการลบคอลัมน์ <strong class="text-red-400">${colName}</strong> ใช่หรือไม่?`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'ลบ',
@@ -432,6 +372,7 @@
                         tbl.columns.splice(colIndex, 1);
                         renderTablesUI();
                         autoPreview();
+                        Swal.fire('ลบสำเร็จ', '', 'success');
                     }
                 });
             } else if(tbl && tbl.columns.length === 1) {
@@ -440,7 +381,6 @@
         }
 
         function updateColumnField(tableId, colIndex, field, value) {
-            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl && tbl.columns[colIndex]) {
                 const col = tbl.columns[colIndex];
@@ -572,10 +512,6 @@
         }
 
         function autoPreview() {
-            if (!isUnlocked) {
-                document.getElementById("sqlPreview").innerText = `-- 🔒 ระบบถูกล็อคเพื่อป้องกันการใช้งานโดยไม่ได้รับอนุญาต\n-- กรุณาคลิกปุ่ม "ปลดล็อค" ที่มุมขวาบนเพื่อยืนยันตัวตนและใช้งานเครื่องมือ`;
-                return;
-            }
             const sqlScript = generateMySQLScript();
             document.getElementById("sqlPreview").innerText = sqlScript;
         }
@@ -600,10 +536,10 @@
                         <div class="flex items-center gap-2 flex-1">
                             <i class="fas fa-table text-indigo-300"></i>
                             <input type="text" value="${escapeHtml(tableName)}" placeholder="ชื่อตาราง" 
-                                class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white font-medium w-48 focus:ring-1 focus:ring-blue-500 ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}"
-                                onchange="updateTableName(${tableId}, this.value)" ${!isUnlocked ? 'disabled' : ''}>
+                                class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white font-medium w-48 focus:ring-1 focus:ring-blue-500"
+                                onchange="updateTableName(${tableId}, this.value)">
                         </div>
-                        <button onclick="deleteTable(${tableId})" class="text-red-400 hover:text-red-300 bg-gray-700/60 p-1.5 rounded-lg ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}" ${!isUnlocked ? 'disabled' : ''}><i class="fas fa-trash-alt"></i></button>
+                        <button onclick="deleteTable(${tableId})" class="text-red-400 hover:text-red-300 bg-gray-700/60 p-1.5 rounded-lg"><i class="fas fa-trash-alt"></i></button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -622,34 +558,33 @@
                 `;
                 
                 table.columns.forEach((col, cIdx) => {
-                    const disabledAttr = !isUnlocked ? 'disabled' : '';
                     html += `
                         <tr class="border-b border-gray-700/60">
                             <td class="px-2 py-2"><input type="text" value="${escapeHtml(col.name)}" 
-                                class="bg-gray-800 border border-gray-600 rounded-md px-2 py-1 w-28 text-white text-xs ${!isUnlocked ? 'opacity-50' : ''}"
-                                onchange="updateColumnField(${tableId}, ${cIdx}, 'name', this.value)" ${disabledAttr}>${!isUnlocked ? '' : ''}</td>
+                                class="bg-gray-800 border border-gray-600 rounded-md px-2 py-1 w-28 text-white text-xs"
+                                onchange="updateColumnField(${tableId}, ${cIdx}, 'name', this.value)">${''}</td>
                             <td class="px-2 py-2">
-                                <select onchange="updateColumnField(${tableId}, ${cIdx}, 'type', this.value)" class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 text-xs w-24" ${disabledAttr}>
+                                <select onchange="updateColumnField(${tableId}, ${cIdx}, 'type', this.value)" class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 text-xs w-24">
                                     ${generateTypeOptions(col.type)}
                                 </select>
                             </td>
                             <td class="px-2 py-2"><input type="text" value="${escapeHtml(col.length)}" 
-                                class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 w-16 text-xs text-center ${!isUnlocked ? 'opacity-50' : ''}"
-                                onchange="updateColumnField(${tableId}, ${cIdx}, 'length', this.value)" ${disabledAttr}></td>
+                                class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 w-16 text-xs text-center"
+                                onchange="updateColumnField(${tableId}, ${cIdx}, 'length', this.value)"></td>
                             <td class="px-2 py-2 text-center">
                                 <input type="checkbox" ${col.nullable ? 'checked' : ''} 
-                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'nullable', this.checked)" class="w-4 h-4 accent-blue-500" ${disabledAttr}>
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'nullable', this.checked)" class="w-4 h-4 accent-blue-500">
                             </td>
                             <td class="px-2 py-2 text-center">
                                 <input type="radio" name="pk_radio_${tableId}" ${col.primary ? 'checked' : ''} 
-                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'primary', true)" class="w-4 h-4 accent-green-500" ${disabledAttr}>
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'primary', true)" class="w-4 h-4 accent-green-500">
                             </td>
                             <td class="px-2 py-2 text-center">
                                 <input type="checkbox" ${col.autoIncrement ? 'checked' : ''} 
-                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'autoIncrement', this.checked)" class="w-4 h-4 accent-yellow-500" ${disabledAttr}>
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'autoIncrement', this.checked)" class="w-4 h-4 accent-yellow-500">
                             </td>
                             <td class="px-2 py-2 text-center">
-                                <button onclick="deleteColumn(${tableId}, ${cIdx})" class="text-red-400 hover:text-red-300 text-xs ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}" ${disabledAttr}><i class="fas fa-minus-circle"></i></button>
+                                <button onclick="deleteColumn(${tableId}, ${cIdx})" class="text-red-400 hover:text-red-300 text-xs"><i class="fas fa-minus-circle"></i></button>
                             </td>
                         </tr>
                     `;
@@ -660,7 +595,7 @@
                         </table>
                     </div>
                     <div class="mt-3 flex justify-end">
-                        <button onclick="addColumnToTable(${tableId})" class="text-xs bg-indigo-600/40 hover:bg-indigo-600 px-3 py-1.5 rounded-lg flex items-center gap-1 transition ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}" ${!isUnlocked ? 'disabled' : ''}><i class="fas fa-plus-circle"></i> เพิ่มคอลัมน์</button>
+                        <button onclick="addColumnToTable(${tableId})" class="text-xs bg-indigo-600/40 hover:bg-indigo-600 px-3 py-1.5 rounded-lg flex items-center gap-1 transition"><i class="fas fa-plus-circle"></i> เพิ่มคอลัมน์</button>
                     </div>
                 </div>
                 `;
@@ -688,25 +623,18 @@
         }
 
         function applyDatabaseName() {
-            if (!isUnlocked) {
-                Swal.fire('🔒 ระบบถูกล็อค', 'กรุณาปลดล็อคก่อนเปลี่ยนชื่อฐานข้อมูล', 'warning');
-                return;
-            }
             const inputDb = document.getElementById("dbNameInput").value;
             if(inputDb.trim() !== "") {
                 currentDatabase = inputDb.trim().replace(/\s/g, '_');
                 document.getElementById("dbNameInput").value = currentDatabase;
                 autoPreview();
+                Swal.fire('เปลี่ยนชื่อฐานข้อมูลสำเร็จ', `ชื่อฐานข้อมูล: ${currentDatabase}`, 'success');
             } else {
                 Swal.fire('ข้อผิดพลาด', 'กรุณากรอกชื่อฐานข้อมูล', 'error');
             }
         }
 
         function exportSQLFile() {
-            if (!isUnlocked) {
-                Swal.fire('🔒 ระบบถูกล็อค', 'กรุณาปลดล็อคก่อนส่งออกไฟล์ SQL', 'warning');
-                return;
-            }
             const sqlContent = generateMySQLScript();
             if(sqlContent.includes("ยังไม่มีตาราง") && tables.length === 0) {
                 Swal.fire('ไม่สามารถส่งออกได้', 'ยังไม่มีตารางในระบบ กรุณาสร้างตารางก่อน', 'warning');
@@ -725,18 +653,30 @@
         }
 
         function copyPreviewToClipboard() {
-            if (!isUnlocked) {
-                Swal.fire('🔒 ระบบถูกล็อค', 'กรุณาปลดล็อคก่อนคัดลอกโค้ด', 'warning');
-                return;
-            }
             const previewText = document.getElementById("sqlPreview").innerText;
-            if(!previewText || previewText.includes("ระบบถูกล็อค")) {
+            if(!previewText || previewText.includes("คลิกปุ่ม")) {
                 Swal.fire('ไม่สามารถคัดลอกได้', 'ไม่มีโค้ด SQL ให้คัดลอก', 'warning');
                 return;
             }
+            
+            // ตั้งค่า flag อนุญาตให้คัดลอก
+            window.isCopyAllowed = true;
+            
             navigator.clipboard.writeText(previewText).then(() => {
-                Swal.fire('คัดลอกสำเร็จ', 'โค้ด SQL ถูกคัดลอกไปยังคลิปบอร์ดแล้ว', 'success');
-            }).catch(() => Swal.fire('คัดลอกไม่สำเร็จ', 'กรุณาลองใหม่อีกครั้ง', 'error'));
+                Swal.fire({
+                    title: '✅ คัดลอกสำเร็จ',
+                    text: 'โค้ด SQL ถูกคัดลอกไปยังคลิปบอร์ดแล้ว',
+                    icon: 'success',
+                    background: '#1f2937',
+                    color: '#fff',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                window.isCopyAllowed = false;
+            }).catch(() => {
+                Swal.fire('คัดลอกไม่สำเร็จ', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                window.isCopyAllowed = false;
+            });
         }
 
         function bindGlobalEvents() {
@@ -745,8 +685,6 @@
             document.getElementById("applyDbBtn")?.addEventListener("click", () => applyDatabaseName());
             document.getElementById("addTableBtn")?.addEventListener("click", () => addTable());
             document.getElementById("copyPreviewBtn")?.addEventListener("click", () => copyPreviewToClipboard());
-            document.getElementById("unlockBtn")?.addEventListener("click", () => showUnlockConfirmation());
-            document.getElementById("unlockFromOverlayBtn")?.addEventListener("click", () => showUnlockConfirmation());
             
             const dbInput = document.getElementById("dbNameInput");
             if(dbInput) dbInput.addEventListener("keypress", (e) => { if(e.key === "Enter") applyDatabaseName(); });
@@ -784,19 +722,12 @@
             currentDatabase = "ecommerce_demo";
             document.getElementById("dbNameInput").value = currentDatabase;
             renderTablesUI();
+            autoPreview();
         }
         
         // เริ่มต้นระบบ
-        antiCopyProtection();
         initDemoData();
         bindGlobalEvents();
-        
-        // แสดง overlay ต้อนรับ
-        setTimeout(() => {
-            if (!isUnlocked) {
-                document.getElementById('antiCopyOverlay').style.display = 'flex';
-            }
-        }, 500);
     </script>
 </body>
 </html>
