@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * { font-family: 'Inter', sans-serif; }
         body {
@@ -29,9 +31,55 @@
             font-family: 'Fira Code', monospace;
             font-size: 0.85rem;
         }
+        /* ป้องกันการเลือกข้อความและคัดลอก */
+        .protected-content {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        .code-block {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+        }
+        /* ปุ่มล็อค/ปลดล็อค */
+        .lock-btn {
+            transition: all 0.3s ease;
+        }
+        .lock-btn:hover {
+            transform: scale(1.05);
+        }
+        /* Overlay ป้องกันการพิมพ์ข้อความ */
+        .anti-copy-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
 <body class="text-gray-200">
+
+    <!-- Overlay ป้องกันการคัดลอกขณะล็อค -->
+    <div id="antiCopyOverlay" class="anti-copy-overlay">
+        <div class="bg-gray-900 rounded-2xl p-8 max-w-md text-center border border-red-500 shadow-2xl">
+            <i class="fas fa-lock text-red-500 text-5xl mb-4"></i>
+            <h3 class="text-2xl font-bold text-white mb-3">⚠️ ระบบถูกป้องกัน ⚠️</h3>
+            <p class="text-gray-300 mb-4">เครื่องมือนี้สงวนลิขสิทธิ์เพื่อการศึกษา<br>กรุณาคลิกปุ่ม "ปลดล็อค" เพื่อใช้งานฟังก์ชันการคัดลอกและส่งออก</p>
+            <button id="unlockFromOverlayBtn" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg font-semibold transition">
+                <i class="fas fa-unlock-alt"></i> ปลดล็อคและยืนยันตัวตน
+            </button>
+        </div>
+    </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         <!-- ส่วนหัวของแอปพลิเคชัน -->
@@ -44,8 +92,15 @@
                 <p class="text-gray-400 mt-1 text-sm">ออกแบบฐานข้อมูลและตาราง → สร้างโค้ด SQL สำเร็จรูป พร้อมส่งออก</p>
             </div>
             <div class="flex gap-3">
-                <button id="genSqlBtn" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all"><i class="fas fa-code"></i> แสดงโค้ด SQL</button>
-                <button id="exportSqlBtn" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all"><i class="fas fa-download"></i> ดาวน์โหลดไฟล์ .sql</button>
+                <button id="unlockBtn" class="bg-yellow-600 hover:bg-yellow-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all lock-btn">
+                    <i class="fas fa-lock"></i> ระบบถูกล็อค | คลิกเพื่อปลดล็อค
+                </button>
+                <button id="genSqlBtn" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-code"></i> แสดงโค้ด SQL
+                </button>
+                <button id="exportSqlBtn" class="bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-download"></i> ดาวน์โหลดไฟล์ .sql
+                </button>
             </div>
         </div>
 
@@ -80,10 +135,13 @@
             <div class="bg-gray-900/70 backdrop-blur-sm rounded-2xl border border-gray-700/60 p-5 shadow-2xl flex flex-col">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xl font-semibold flex items-center gap-2"><i class="fas fa-terminal text-green-400"></i> โค้ด MySQL ที่สร้างได้</h2>
-                    <button id="copyPreviewBtn" class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded-lg transition"><i class="far fa-copy"></i> คัดลอก</button>
+                    <button id="copyPreviewBtn" class="text-gray-400 hover:text-white text-sm bg-gray-800 px-3 py-1 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="far fa-copy"></i> คัดลอก
+                    </button>
                 </div>
                 <div class="bg-gray-950/90 rounded-xl border border-gray-700 p-4 h-[65vh] overflow-auto shadow-inner">
-                    <pre id="sqlPreview" class="code-block text-sm text-green-300 whitespace-pre-wrap break-all font-mono">-- คลิกปุ่ม "แสดงโค้ด SQL" เพื่อสร้างคำสั่ง MySQL</pre>
+                    <pre id="sqlPreview" class="code-block text-sm text-green-300 whitespace-pre-wrap break-all font-mono">-- 🔒 ระบบถูกล็อคเพื่อป้องกันการใช้งานโดยไม่ได้รับอนุญาต
+-- กรุณาคลิกปุ่ม "ปลดล็อค" ที่มุมขวาบนเพื่อยืนยันตัวตนและใช้งานเครื่องมือ</pre>
                 </div>
             </div>
         </div>
@@ -91,37 +149,187 @@
         <!-- ส่วนท้าย (Footer) -->
         <footer class="mt-10 text-center text-gray-500 border-t border-gray-800/60 pt-6 text-sm flex flex-wrap justify-between items-center">
             <span>พัฒนาโดย <span class="text-blue-400 font-medium">ครบเครื่องเรื่องไอที</span> (เครื่องมือประกอบการสอน)</span>
-            <span class="text-xs"><i class="fas fa-laptop-code"></i> MySQL Designer v1.0 | รองรับโหมดมืด</span>
+            <span class="text-xs"><i class="fas fa-laptop-code"></i> MySQL Designer v1.0 | สงวนลิขสิทธิ์เพื่อการศึกษา</span>
         </footer>
     </div>
 
     <script>
+        // ==================== ระบบป้องกันการคัดลอก ====================
+        let isUnlocked = false; // สถานะการปลดล็อค
+        
+        // ฟังก์ชันแสดง SweetAlert ยืนยันตัวตน
+        async function showUnlockConfirmation() {
+            const result = await Swal.fire({
+                title: '🔒 ยืนยันตัวตนเพื่อใช้งาน',
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">เครื่องมือนี้พัฒนาโดย <strong class="text-blue-400">"ครบเครื่องเรื่องไอที"</strong></p>
+                        <p class="mb-3">เพื่อวัตถุประสงค์ในการศึกษาและการเรียนการสอนเท่านั้น</p>
+                        <p class="mb-3">กรุณากรอกรหัสผ่านเพื่อปลดล็อคระบบ:</p>
+                        <input type="password" id="unlockPassword" class="swal2-input" placeholder="รหัสผ่าน">
+                        <p class="text-xs text-gray-400 mt-2">* รหัสผ่านสำหรับนักศึกษา/ผู้เรียน: <strong class="text-yellow-400">teach2024</strong></p>
+                    </div>
+                `,
+                background: '#1f2937',
+                color: '#fff',
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก',
+                showCancelButton: true,
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#6b7280',
+                preConfirm: () => {
+                    const password = document.getElementById('unlockPassword').value;
+                    if (!password) {
+                        Swal.showValidationMessage('กรุณากรอกรหัสผ่าน');
+                        return false;
+                    }
+                    return password;
+                }
+            });
+            
+            if (result.isConfirmed && result.value === 'teach2024') {
+                isUnlocked = true;
+                enableAllFeatures();
+                Swal.fire({
+                    title: '✅ ปลดล็อคสำเร็จ',
+                    text: 'ตอนนี้คุณสามารถใช้งานฟังก์ชันทั้งหมดได้แล้ว',
+                    icon: 'success',
+                    background: '#1f2937',
+                    color: '#fff',
+                    confirmButtonColor: '#10b981',
+                    timer: 2000
+                });
+                return true;
+            } else if (result.isConfirmed) {
+                Swal.fire({
+                    title: '❌ รหัสผ่านไม่ถูกต้อง',
+                    text: 'กรุณาติดต่อผู้พัฒนาเพื่อขอรับรหัสผ่านที่ถูกต้อง',
+                    icon: 'error',
+                    background: '#1f2937',
+                    color: '#fff',
+                    confirmButtonColor: '#ef4444'
+                });
+                return false;
+            }
+            return false;
+        }
+        
+        // เปิดใช้งานฟังก์ชันทั้งหมด
+        function enableAllFeatures() {
+            // เปิดใช้งานปุ่มต่างๆ
+            document.getElementById('genSqlBtn').disabled = false;
+            document.getElementById('exportSqlBtn').disabled = false;
+            document.getElementById('copyPreviewBtn').disabled = false;
+            
+            // เปลี่ยนสถานะปุ่มล็อค
+            const unlockBtn = document.getElementById('unlockBtn');
+            unlockBtn.innerHTML = '<i class="fas fa-unlock-alt"></i> ระบบปลดล็อคแล้ว';
+            unlockBtn.classList.remove('bg-yellow-600', 'hover:bg-yellow-500');
+            unlockBtn.classList.add('bg-green-600', 'hover:bg-green-500');
+            
+            // ซ่อน overlay ถ้ามีการแสดง
+            document.getElementById('antiCopyOverlay').style.display = 'none';
+            
+            // แสดงตัวอย่าง SQL
+            autoPreview();
+            
+            // แจ้งเตือน
+            Swal.fire({
+                title: '🎉 ยินดีต้อนรับ',
+                text: 'ระบบพร้อมใช้งานแล้ว สามารถออกแบบฐานข้อมูลและส่งออกไฟล์ SQL ได้',
+                icon: 'info',
+                background: '#1f2937',
+                color: '#fff',
+                confirmButtonColor: '#3b82f6',
+                timer: 2000
+            });
+        }
+        
+        // ป้องกันการคัดลอกจากคอนโซลและ开发者工具
+        function antiCopyProtection() {
+            // ป้องกันการกด Ctrl+C, Ctrl+X, Ctrl+V
+            document.addEventListener('copy', function(e) {
+                if (!isUnlocked) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: '⛔ ไม่อนุญาตให้คัดลอก',
+                        text: 'กรุณาปลดล็อคระบบก่อนใช้งานฟังก์ชันคัดลอก',
+                        icon: 'warning',
+                        background: '#1f2937',
+                        color: '#fff',
+                        confirmButtonColor: '#f59e0b'
+                    });
+                    return false;
+                }
+            });
+            
+            document.addEventListener('cut', function(e) {
+                if (!isUnlocked) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            document.addEventListener('paste', function(e) {
+                if (!isUnlocked) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            // ป้องกันการคลิกขวา
+            document.addEventListener('contextmenu', function(e) {
+                if (!isUnlocked) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: '⛔ ฟังก์ชันถูกจำกัด',
+                        text: 'ระบบถูกป้องกันเพื่อรักษาลิขสิทธิ์ทางการศึกษา',
+                        icon: 'warning',
+                        background: '#1f2937',
+                        color: '#fff',
+                        confirmButtonColor: '#f59e0b',
+                        timer: 1500
+                    });
+                    return false;
+                }
+            });
+            
+            // ตรวจสอบการเปิด Developer Tools (เบื้องต้น)
+            let devtools = /./;
+            devtools.toString = function() {
+                if (!isUnlocked) {
+                    Swal.fire({
+                        title: '⚠️ ตรวจพบ Developer Tools',
+                        text: 'กรุณาปิด Developer Tools เพื่อใช้งานระบบ',
+                        icon: 'warning',
+                        background: '#1f2937',
+                        color: '#fff'
+                    });
+                }
+                return '';
+            };
+        }
+        
         // ==================== โครงสร้างข้อมูลหลัก ====================
-        // tables: จัดเก็บข้อมูลตารางทั้งหมด แต่ละตารางประกอบด้วย id, ชื่อตาราง, และคอลัมน์ต่างๆ
         let tables = [];   
-        // currentDatabase: ชื่อฐานข้อมูลปัจจุบัน
         let currentDatabase = "app_designer_db";
-        // ตัวแปรสำหรับสร้าง ID อัตโนมัติ
         let nextTableId = 1;
 
-        // ฟังก์ชันสร้าง ID สำหรับตารางใหม่
         function generateTableId() { 
             return Date.now() + Math.random() * 10000 + nextTableId++; 
         }
 
-        // ฟังก์ชันสร้างคอลัมน์เริ่มต้น (ใช้เมื่อเพิ่มตารางใหม่)
         function createDefaultColumn() {
             return {
-                name: "id",           // ชื่อคอลัมน์
-                type: "INT",          // ชนิดข้อมูล
-                length: "11",         // ความยาว
-                nullable: false,      // อนุญาตให้เป็นค่าว่างหรือไม่
-                primary: true,        // เป็นคีย์หลักหรือไม่
-                autoIncrement: true   // Auto increment หรือไม่
+                name: "id",
+                type: "INT",
+                length: "11",
+                nullable: false,
+                primary: true,
+                autoIncrement: true
             };
         }
 
-        // ฟังก์ชันสร้างโครงสร้างตารางใหม่
         function createNewTable() {
             return {
                 id: generateTableId(),
@@ -130,36 +338,67 @@
             };
         }
 
-        // เพิ่มตารางใหม่เข้าสู่ระบบ
         function addTable() {
+            if (!isUnlocked) {
+                Swal.fire({
+                    title: '🔒 ระบบถูกล็อค',
+                    text: 'กรุณาปลดล็อคระบบก่อนเพิ่มตาราง',
+                    icon: 'warning',
+                    background: '#1f2937',
+                    color: '#fff'
+                });
+                return;
+            }
             const newTable = createNewTable();
             tables.push(newTable);
-            renderTablesUI();    // รีเฟรช UI
-            autoPreview();       // แสดงตัวอย่าง SQL อัตโนมัติ
+            renderTablesUI();
+            autoPreview();
         }
 
-        // ลบตารางตาม ID
         function deleteTable(tableId) {
-            if(confirm("คุณต้องการลบตารางนี้ใช่หรือไม่?")) {
-                tables = tables.filter(t => t.id != tableId);
-                renderTablesUI();
-                autoPreview();
+            if (!isUnlocked) {
+                Swal.fire({
+                    title: '🔒 ระบบถูกล็อค',
+                    text: 'กรุณาปลดล็อคระบบก่อนลบตาราง',
+                    icon: 'warning',
+                    background: '#1f2937',
+                    color: '#fff'
+                });
+                return;
             }
+            Swal.fire({
+                title: 'ยืนยันการลบ',
+                text: 'คุณต้องการลบตารางนี้ใช่หรือไม่?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ลบ',
+                cancelButtonText: 'ยกเลิก',
+                background: '#1f2937',
+                color: '#fff',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    tables = tables.filter(t => t.id != tableId);
+                    renderTablesUI();
+                    autoPreview();
+                    Swal.fire('ลบสำเร็จ', '', 'success');
+                }
+            });
         }
 
-        // ปรับปรุงชื่อตาราง
         function updateTableName(tableId, newName) {
+            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl) {
-                // ตรวจสอบและแปลงชื่อให้เหมาะสม (ไม่มีช่องว่าง)
                 tbl.name = newName.trim() === "" ? "unnamed" : newName.trim().replace(/\s+/g, '_');
                 renderTablesUI();
                 autoPreview();
             }
         }
 
-        // เพิ่มคอลัมน์ใหม่ให้กับตาราง
         function addColumnToTable(tableId) {
+            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl) {
                 tbl.columns.push({
@@ -175,22 +414,33 @@
             }
         }
 
-        // ลบคอลัมน์ออกจากตาราง (ต้องเหลืออย่างน้อย 1 คอลัมน์)
         function deleteColumn(tableId, colIndex) {
+            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl && tbl.columns.length > 1) {
-                if(confirm("ลบคอลัมน์นี้ใช่หรือไม่?")) {
-                    tbl.columns.splice(colIndex, 1);
-                    renderTablesUI();
-                    autoPreview();
-                }
+                Swal.fire({
+                    title: 'ยืนยันการลบคอลัมน์',
+                    text: 'คุณต้องการลบคอลัมน์นี้ใช่หรือไม่?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'ลบ',
+                    cancelButtonText: 'ยกเลิก',
+                    background: '#1f2937',
+                    color: '#fff'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        tbl.columns.splice(colIndex, 1);
+                        renderTablesUI();
+                        autoPreview();
+                    }
+                });
             } else if(tbl && tbl.columns.length === 1) {
-                alert("ไม่สามารถลบได้: ตารางต้องมีอย่างน้อย 1 คอลัมน์");
+                Swal.fire('ไม่สามารถลบได้', 'ตารางต้องมีอย่างน้อย 1 คอลัมน์', 'warning');
             }
         }
 
-        // ปรับปรุงข้อมูลของคอลัมน์ (ชื่อ, ชนิดข้อมูล, ความยาว, nullable, primary key, auto increment)
         function updateColumnField(tableId, colIndex, field, value) {
+            if (!isUnlocked) return;
             const tbl = tables.find(t => t.id == tableId);
             if(tbl && tbl.columns[colIndex]) {
                 const col = tbl.columns[colIndex];
@@ -202,7 +452,6 @@
                 }
                 else if(field === "type") {
                     col.type = value;
-                    // ปรับค่า auto increment ให้เหมาะสมกับชนิดข้อมูล
                     if(col.autoIncrement && col.type !== "INT" && col.type !== "BIGINT") {
                         col.autoIncrement = false;
                     }
@@ -216,18 +465,15 @@
                 else if(field === "primary") {
                     const isPrimary = (value === "true" || value === true);
                     if(isPrimary) {
-                        // ตรวจสอบว่าในตารางเดียวกันมี primary key อื่นอยู่หรือไม่ ถ้ามีให้ลบออก
                         tbl.columns.forEach((c, idx) => {
                             if(idx !== colIndex) c.primary = false;
                         });
                         col.primary = true;
-                        // ถ้าเปิด primary key และชนิดข้อมูลเป็น INT/BIGINT และ auto increment ยังไม่เปิด ให้เปิดอัตโนมัติเพื่อความสะดวก
                         if((col.type === "INT" || col.type === "BIGINT") && !col.autoIncrement) {
                             col.autoIncrement = true;
                         }
                     } else {
                         col.primary = false;
-                        // ถ้ายกเลิก primary key ให้ปิด auto increment ด้วย
                         if(col.autoIncrement) {
                             col.autoIncrement = false;
                         }
@@ -236,13 +482,12 @@
                 else if(field === "autoIncrement") {
                     const isAutoInc = (value === "true" || value === true);
                     if(isAutoInc) {
-                        // ตรวจสอบเงื่อนไข: ต้องเป็น primary key และชนิดข้อมูลต้องเป็น INT หรือ BIGINT
                         if(!col.primary) {
-                            alert("Auto Increment ต้องใช้ร่วมกับ Primary Key เท่านั้น กรุณาเปิด Primary Key ก่อน");
+                            Swal.fire('ข้อผิดพลาด', 'Auto Increment ต้องใช้ร่วมกับ Primary Key เท่านั้น', 'error');
                             return;
                         }
                         if(col.type !== "INT" && col.type !== "BIGINT") {
-                            alert("Auto Increment เหมาะกับชนิดข้อมูล INT หรือ BIGINT เท่านั้น");
+                            Swal.fire('ข้อผิดพลาด', 'Auto Increment เหมาะกับชนิดข้อมูล INT หรือ BIGINT เท่านั้น', 'error');
                             return;
                         }
                         col.autoIncrement = true;
@@ -256,7 +501,6 @@
             }
         }
 
-        // ฟังก์ชันสร้างโค้ด SQL อย่างสมบูรณ์ (CREATE DATABASE + CREATE TABLE)
         function generateMySQLScript() {
             if(!currentDatabase || currentDatabase.trim() === "") currentDatabase = "mydb";
             
@@ -264,6 +508,7 @@
             sql += `-- สร้างโดย MySQL Designer Pro\n`;
             sql += `-- ฐานข้อมูล: ${currentDatabase}\n`;
             sql += `-- วันที่สร้าง: ${new Date().toLocaleString('th-TH')}\n`;
+            sql += `-- สงวนลิขสิทธิ์เพื่อการศึกษา โดย ครบเครื่องเรื่องไอที\n`;
             sql += `-- ===========================================\n\n`;
             sql += `CREATE DATABASE IF NOT EXISTS \`${escapeSqlIdentifier(currentDatabase)}\`;\n`;
             sql += `USE \`${escapeSqlIdentifier(currentDatabase)}\`;\n\n`;
@@ -273,7 +518,6 @@
                 return sql;
             }
 
-            // สร้างคำสั่ง CREATE TABLE สำหรับแต่ละตาราง
             tables.forEach(table => {
                 if(!table.name || table.name.trim() === "") table.name = "undefined_table";
                 const tableName = escapeSqlIdentifier(table.name);
@@ -281,12 +525,10 @@
                 sql += `CREATE TABLE IF NOT EXISTS ${tableName} (\n`;
                 
                 const colDefs = [];
-                // สร้างคำจำกัดความของแต่ละคอลัมน์
                 table.columns.forEach((col) => {
                     let colName = escapeSqlIdentifier(col.name);
                     let dataType = col.type.toUpperCase();
                     
-                    // จัดการความยาวของชนิดข้อมูล
                     let typeDef = dataType;
                     if(col.length && col.length.trim() !== "") {
                         if(dataType === "DECIMAL") {
@@ -297,24 +539,19 @@
                             typeDef = dataType;
                         }
                     } else {
-                        // กำหนดค่าเริ่มต้นหากไม่ระบุความยาว
                         if(dataType === "VARCHAR") typeDef = `VARCHAR(255)`;
                         else if(dataType === "INT") typeDef = `INT(11)`;
                         else typeDef = dataType;
                     }
                     
                     let line = `    ${colName} ${typeDef}`;
-                    
-                    // จัดการ NOT NULL / NULL
                     if(!col.nullable) line += ` NOT NULL`;
                     else line += ` NULL`;
                     
-                    // จัดการ AUTO_INCREMENT (ต้องเป็น Primary Key เท่านั้น)
                     if(col.autoIncrement && col.primary) {
                         line += ` AUTO_INCREMENT`;
                     }
                     
-                    // จัดการ PRIMARY KEY
                     if(col.primary) {
                         line += ` PRIMARY KEY`;
                     }
@@ -329,19 +566,20 @@
             return sql;
         }
 
-        // ฟังก์ชันป้องกัน SQL Injection ในการ Escape ชื่อ (identifier)
         function escapeSqlIdentifier(str) {
             if(!str) return "``";
             return "`" + str.replace(/`/g, '``') + "`";
         }
 
-        // แสดงตัวอย่าง SQL อัตโนมัติ
         function autoPreview() {
+            if (!isUnlocked) {
+                document.getElementById("sqlPreview").innerText = `-- 🔒 ระบบถูกล็อคเพื่อป้องกันการใช้งานโดยไม่ได้รับอนุญาต\n-- กรุณาคลิกปุ่ม "ปลดล็อค" ที่มุมขวาบนเพื่อยืนยันตัวตนและใช้งานเครื่องมือ`;
+                return;
+            }
             const sqlScript = generateMySQLScript();
             document.getElementById("sqlPreview").innerText = sqlScript;
         }
 
-        // แสดงผล UI ของตารางทั้งหมดแบบไดนามิก
         function renderTablesUI() {
             const container = document.getElementById("tablesContainer");
             if(!container) return;
@@ -362,10 +600,10 @@
                         <div class="flex items-center gap-2 flex-1">
                             <i class="fas fa-table text-indigo-300"></i>
                             <input type="text" value="${escapeHtml(tableName)}" placeholder="ชื่อตาราง" 
-                                class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white font-medium w-48 focus:ring-1 focus:ring-blue-500"
-                                onchange="updateTableName(${tableId}, this.value)">
+                                class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white font-medium w-48 focus:ring-1 focus:ring-blue-500 ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}"
+                                onchange="updateTableName(${tableId}, this.value)" ${!isUnlocked ? 'disabled' : ''}>
                         </div>
-                        <button onclick="deleteTable(${tableId})" class="text-red-400 hover:text-red-300 bg-gray-700/60 p-1.5 rounded-lg"><i class="fas fa-trash-alt"></i></button>
+                        <button onclick="deleteTable(${tableId})" class="text-red-400 hover:text-red-300 bg-gray-700/60 p-1.5 rounded-lg ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}" ${!isUnlocked ? 'disabled' : ''}><i class="fas fa-trash-alt"></i></button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -384,40 +622,34 @@
                 `;
                 
                 table.columns.forEach((col, cIdx) => {
-                    const colNameVal = col.name;
-                    const typeVal = col.type;
-                    const lengthVal = col.length || '';
-                    const nullableChecked = col.nullable ? true : false;
-                    const primaryChecked = col.primary ? true : false;
-                    const autoIncChecked = col.autoIncrement ? true : false;
-                    
+                    const disabledAttr = !isUnlocked ? 'disabled' : '';
                     html += `
                         <tr class="border-b border-gray-700/60">
-                            <td class="px-2 py-2"><input type="text" value="${escapeHtml(colNameVal)}" 
-                                class="bg-gray-800 border border-gray-600 rounded-md px-2 py-1 w-28 text-white text-xs"
-                                onchange="updateColumnField(${tableId}, ${cIdx}, 'name', this.value)"></td>
+                            <td class="px-2 py-2"><input type="text" value="${escapeHtml(col.name)}" 
+                                class="bg-gray-800 border border-gray-600 rounded-md px-2 py-1 w-28 text-white text-xs ${!isUnlocked ? 'opacity-50' : ''}"
+                                onchange="updateColumnField(${tableId}, ${cIdx}, 'name', this.value)" ${disabledAttr}>${!isUnlocked ? '' : ''}</td>
                             <td class="px-2 py-2">
-                                <select onchange="updateColumnField(${tableId}, ${cIdx}, 'type', this.value)" class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 text-xs w-24">
-                                    ${generateTypeOptions(typeVal)}
+                                <select onchange="updateColumnField(${tableId}, ${cIdx}, 'type', this.value)" class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 text-xs w-24" ${disabledAttr}>
+                                    ${generateTypeOptions(col.type)}
                                 </select>
                             </td>
-                            <td class="px-2 py-2"><input type="text" value="${escapeHtml(lengthVal)}" 
-                                class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 w-16 text-xs text-center"
-                                onchange="updateColumnField(${tableId}, ${cIdx}, 'length', this.value)"></td>
+                            <td class="px-2 py-2"><input type="text" value="${escapeHtml(col.length)}" 
+                                class="bg-gray-800 border border-gray-600 rounded-md px-1 py-1 w-16 text-xs text-center ${!isUnlocked ? 'opacity-50' : ''}"
+                                onchange="updateColumnField(${tableId}, ${cIdx}, 'length', this.value)" ${disabledAttr}></td>
                             <td class="px-2 py-2 text-center">
-                                <input type="checkbox" ${nullableChecked ? 'checked' : ''} 
-                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'nullable', this.checked)" class="w-4 h-4 accent-blue-500">
+                                <input type="checkbox" ${col.nullable ? 'checked' : ''} 
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'nullable', this.checked)" class="w-4 h-4 accent-blue-500" ${disabledAttr}>
                             </td>
                             <td class="px-2 py-2 text-center">
-                                <input type="radio" name="pk_radio_${tableId}" ${primaryChecked ? 'checked' : ''} 
-                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'primary', true)" class="w-4 h-4 accent-green-500">
+                                <input type="radio" name="pk_radio_${tableId}" ${col.primary ? 'checked' : ''} 
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'primary', true)" class="w-4 h-4 accent-green-500" ${disabledAttr}>
                             </td>
                             <td class="px-2 py-2 text-center">
-                                <input type="checkbox" ${autoIncChecked ? 'checked' : ''} 
-                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'autoIncrement', this.checked)" class="w-4 h-4 accent-yellow-500">
+                                <input type="checkbox" ${col.autoIncrement ? 'checked' : ''} 
+                                    onchange="updateColumnField(${tableId}, ${cIdx}, 'autoIncrement', this.checked)" class="w-4 h-4 accent-yellow-500" ${disabledAttr}>
                             </td>
                             <td class="px-2 py-2 text-center">
-                                <button onclick="deleteColumn(${tableId}, ${cIdx})" class="text-red-400 hover:text-red-300 text-xs"><i class="fas fa-minus-circle"></i></button>
+                                <button onclick="deleteColumn(${tableId}, ${cIdx})" class="text-red-400 hover:text-red-300 text-xs ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}" ${disabledAttr}><i class="fas fa-minus-circle"></i></button>
                             </td>
                         </tr>
                     `;
@@ -428,7 +660,7 @@
                         </table>
                     </div>
                     <div class="mt-3 flex justify-end">
-                        <button onclick="addColumnToTable(${tableId})" class="text-xs bg-indigo-600/40 hover:bg-indigo-600 px-3 py-1.5 rounded-lg flex items-center gap-1 transition"><i class="fas fa-plus-circle"></i> เพิ่มคอลัมน์</button>
+                        <button onclick="addColumnToTable(${tableId})" class="text-xs bg-indigo-600/40 hover:bg-indigo-600 px-3 py-1.5 rounded-lg flex items-center gap-1 transition ${!isUnlocked ? 'opacity-50 cursor-not-allowed' : ''}" ${!isUnlocked ? 'disabled' : ''}><i class="fas fa-plus-circle"></i> เพิ่มคอลัมน์</button>
                     </div>
                 </div>
                 `;
@@ -436,7 +668,6 @@
             container.innerHTML = html;
         }
 
-        // สร้างตัวเลือกชนิดข้อมูลสำหรับ dropdown
         function generateTypeOptions(selected) {
             const types = ["INT", "VARCHAR", "TEXT", "DATE", "DATETIME", "DECIMAL", "BOOLEAN", "BIGINT", "CHAR", "TIMESTAMP"];
             let opts = "";
@@ -446,7 +677,6 @@
             return opts;
         }
 
-        // ป้องกัน XSS ด้วยการ Escape HTML
         function escapeHtml(str) {
             if(!str) return "";
             return str.replace(/[&<>]/g, function(m) {
@@ -457,23 +687,29 @@
             });
         }
 
-        // บันทึกชื่อฐานข้อมูล
         function applyDatabaseName() {
+            if (!isUnlocked) {
+                Swal.fire('🔒 ระบบถูกล็อค', 'กรุณาปลดล็อคก่อนเปลี่ยนชื่อฐานข้อมูล', 'warning');
+                return;
+            }
             const inputDb = document.getElementById("dbNameInput").value;
             if(inputDb.trim() !== "") {
                 currentDatabase = inputDb.trim().replace(/\s/g, '_');
                 document.getElementById("dbNameInput").value = currentDatabase;
                 autoPreview();
             } else {
-                alert("กรุณากรอกชื่อฐานข้อมูล");
+                Swal.fire('ข้อผิดพลาด', 'กรุณากรอกชื่อฐานข้อมูล', 'error');
             }
         }
 
-        // ส่งออกไฟล์ SQL
         function exportSQLFile() {
+            if (!isUnlocked) {
+                Swal.fire('🔒 ระบบถูกล็อค', 'กรุณาปลดล็อคก่อนส่งออกไฟล์ SQL', 'warning');
+                return;
+            }
             const sqlContent = generateMySQLScript();
             if(sqlContent.includes("ยังไม่มีตาราง") && tables.length === 0) {
-                alert("ยังไม่มีตารางในระบบ กรุณาสร้างตารางก่อนส่งออกไฟล์ SQL");
+                Swal.fire('ไม่สามารถส่งออกได้', 'ยังไม่มีตารางในระบบ กรุณาสร้างตารางก่อน', 'warning');
                 return;
             }
             const blob = new Blob([sqlContent], {type: "text/plain;charset=utf-8"});
@@ -485,44 +721,44 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            alert("ส่งออกไฟล์ SQL สำเร็จ!");
+            Swal.fire('ส่งออกสำเร็จ', `ไฟล์ ${currentDatabase}_schema.sql ถูกบันทึกเรียบร้อย`, 'success');
         }
 
-        // คัดลอกโค้ด SQL ไปยังคลิปบอร์ด
         function copyPreviewToClipboard() {
+            if (!isUnlocked) {
+                Swal.fire('🔒 ระบบถูกล็อค', 'กรุณาปลดล็อคก่อนคัดลอกโค้ด', 'warning');
+                return;
+            }
             const previewText = document.getElementById("sqlPreview").innerText;
-            if(!previewText || previewText.includes("คลิกปุ่ม")) {
-                alert("ไม่มีโค้ด SQL ให้คัดลอก กรุณาคลิกปุ่ม 'แสดงโค้ด SQL' ก่อน");
+            if(!previewText || previewText.includes("ระบบถูกล็อค")) {
+                Swal.fire('ไม่สามารถคัดลอกได้', 'ไม่มีโค้ด SQL ให้คัดลอก', 'warning');
                 return;
             }
             navigator.clipboard.writeText(previewText).then(() => {
-                alert("คัดลอกโค้ด SQL ไปยังคลิปบอร์ดเรียบร้อย!");
-            }).catch(() => alert("ไม่สามารถคัดลอกได้"));
+                Swal.fire('คัดลอกสำเร็จ', 'โค้ด SQL ถูกคัดลอกไปยังคลิปบอร์ดแล้ว', 'success');
+            }).catch(() => Swal.fire('คัดลอกไม่สำเร็จ', 'กรุณาลองใหม่อีกครั้ง', 'error'));
         }
 
-        // ผูกเหตุการณ์ต่างๆ (Event Listeners)
         function bindGlobalEvents() {
             document.getElementById("genSqlBtn")?.addEventListener("click", () => autoPreview());
             document.getElementById("exportSqlBtn")?.addEventListener("click", () => exportSQLFile());
             document.getElementById("applyDbBtn")?.addEventListener("click", () => applyDatabaseName());
             document.getElementById("addTableBtn")?.addEventListener("click", () => addTable());
             document.getElementById("copyPreviewBtn")?.addEventListener("click", () => copyPreviewToClipboard());
+            document.getElementById("unlockBtn")?.addEventListener("click", () => showUnlockConfirmation());
+            document.getElementById("unlockFromOverlayBtn")?.addEventListener("click", () => showUnlockConfirmation());
             
-            // กด Enter ในช่องชื่อฐานข้อมูล
             const dbInput = document.getElementById("dbNameInput");
             if(dbInput) dbInput.addEventListener("keypress", (e) => { if(e.key === "Enter") applyDatabaseName(); });
         }
 
-        // กำหนดฟังก์ชันให้อยู่ใน scope ระดับ global เพื่อให้ HTML onclick เรียกใช้ได้
         window.updateTableName = updateTableName;
         window.deleteTable = deleteTable;
         window.addColumnToTable = addColumnToTable;
         window.deleteColumn = deleteColumn;
         window.updateColumnField = updateColumnField;
         
-        // เริ่มต้นระบบด้วยข้อมูลตัวอย่าง
         function initDemoData() {
-            // สร้างตารางตัวอย่าง: สินค้า (products) และ หมวดหมู่ (categories)
             const tableProducts = {
                 id: generateTableId(),
                 name: "products",
@@ -548,12 +784,19 @@
             currentDatabase = "ecommerce_demo";
             document.getElementById("dbNameInput").value = currentDatabase;
             renderTablesUI();
-            autoPreview();
         }
         
-        // เริ่มต้นการทำงาน
+        // เริ่มต้นระบบ
+        antiCopyProtection();
         initDemoData();
         bindGlobalEvents();
+        
+        // แสดง overlay ต้อนรับ
+        setTimeout(() => {
+            if (!isUnlocked) {
+                document.getElementById('antiCopyOverlay').style.display = 'flex';
+            }
+        }, 500);
     </script>
 </body>
 </html>
